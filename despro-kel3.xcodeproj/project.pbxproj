@@ -29,9 +29,45 @@
 		84E99E852CD20E26009E20E2 /* despro-kel3UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "despro-kel3UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		84D45C632CD230AD009E20E2 /* Exceptions for "despro-kel3" folder in "despro-kel3" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 84E99E6A2CD20E24009E20E2 /* despro-kel3 */;
+		};
+		84D45C6F2CD240DD009E20E2 /* Exceptions for "Shared" folder in "despro-kel3Tests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Media.xcassets,
+			);
+			target = 84E99E7A2CD20E26009E20E2 /* despro-kel3Tests */;
+		};
+		84D45C702CD240DD009E20E2 /* Exceptions for "Shared" folder in "despro-kel3UITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Media.xcassets,
+			);
+			target = 84E99E842CD20E26009E20E2 /* despro-kel3UITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		84D45C642CD23A4F009E20E2 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				84D45C6F2CD240DD009E20E2 /* Exceptions for "Shared" folder in "despro-kel3Tests" target */,
+				84D45C702CD240DD009E20E2 /* Exceptions for "Shared" folder in "despro-kel3UITests" target */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		84E99E6D2CD20E24009E20E2 /* despro-kel3 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				84D45C632CD230AD009E20E2 /* Exceptions for "despro-kel3" folder in "despro-kel3" target */,
+			);
 			path = "despro-kel3";
 			sourceTree = "<group>";
 		};
@@ -75,6 +111,7 @@
 		84E99E622CD20E23009E20E2 = {
 			isa = PBXGroup;
 			children = (
+				84D45C642CD23A4F009E20E2 /* Shared */,
 				84E99E6D2CD20E24009E20E2 /* despro-kel3 */,
 				84E99E7E2CD20E26009E20E2 /* despro-kel3Tests */,
 				84E99E882CD20E26009E20E2 /* despro-kel3UITests */,
@@ -108,6 +145,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				84D45C642CD23A4F009E20E2 /* Shared */,
 				84E99E6D2CD20E24009E20E2 /* despro-kel3 */,
 			);
 			name = "despro-kel3";
@@ -396,13 +434,18 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"despro-kel3/Preview Content\"";
+				DEVELOPMENT_TEAM = 78QLV448A6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "despro-kel3/Info.plist";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires Bluetooth access to communicate with devices";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires Bluetooth access to communicate with devices 2";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -424,13 +467,18 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"despro-kel3/Preview Content\"";
+				DEVELOPMENT_TEAM = 78QLV448A6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "despro-kel3/Info.plist";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires Bluetooth access to communicate with devices";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires Bluetooth access to communicate with devices 2";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
