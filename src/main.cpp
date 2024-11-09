@@ -3,19 +3,23 @@
 #include <BLEServer.h>
 #include <Arduino.h>
 
-#define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SERVICE_UUID              "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define STATE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 enum State {
   IDLE = 0,
-  SCANNING = 1,
-  DONE = 2
+  INITIALIZE = 1,
+  READY = 2,       // New READY state added
+  CAPTURING = 3,
+  FLIPPING = 4,
+  DONE = 5,
+  ERROR = 9
 };
 
 State currentState = IDLE;
 BLECharacteristic *pStateCharacteristic;
 bool deviceConnected = false;
-BLEAdvertising *pAdvertising; // Declare advertising pointer globally
+BLEAdvertising *pAdvertising;
 
 // Update characteristic value, notify clients, and print state only if changed
 void updateState(State newState) {
@@ -28,15 +32,30 @@ void updateState(State newState) {
       case IDLE: 
         stateName = "IDLE"; 
         break;
-      case SCANNING: 
-        stateName = "SCANNING"; 
+      case INITIALIZE: 
+        stateName = "INITIALIZE"; 
+        break;
+      case READY: 
+        stateName = "READY";       // Handle READY state
+        break;
+      case CAPTURING: 
+        stateName = "CAPTURING"; 
+        break;
+      case FLIPPING: 
+        stateName = "FLIPPING"; 
         break;
       case DONE: 
         stateName = "DONE"; 
         break;
+      case ERROR: 
+        stateName = "ERROR"; 
+        break;
+      default: 
+        stateName = "UNKNOWN"; 
+        break;
     }
 
-    pStateCharacteristic->setValue(stateName.c_str()); // Set state name as characteristic value
+    pStateCharacteristic->setValue(stateName.c_str());
     pStateCharacteristic->notify();
 
     Serial.print("State changed to: ");
@@ -68,8 +87,12 @@ class StateControlCallback : public BLECharacteristicCallbacks {
     
     if (value.length() > 0) {
       if (value[0] == '0') updateState(IDLE);
-      else if (value[0] == '1') updateState(SCANNING);
-      else if (value[0] == '2') updateState(DONE);
+      else if (value[0] == '1') updateState(INITIALIZE);
+      else if (value[0] == '2') updateState(READY);       // Handle READY state
+      else if (value[0] == '3') updateState(CAPTURING);
+      else if (value[0] == '4') updateState(FLIPPING);
+      else if (value[0] == '5') updateState(DONE);
+      else if (value[0] == '9') updateState(ERROR);
       else Serial.println("Invalid state command received.");
     }
   }
@@ -99,7 +122,7 @@ void setup() {
 
   // Start the service and advertising
   pService->start();
-  pAdvertising = BLEDevice::getAdvertising(); // Initialize advertising
+  pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->start();
 
@@ -111,8 +134,12 @@ void loop() {
   if (Serial.available()) {
     char input = Serial.read();
     if (input == '0') updateState(IDLE);
-    else if (input == '1') updateState(SCANNING);
-    else if (input == '2') updateState(DONE);
+    else if (input == '1') updateState(INITIALIZE);
+    else if (input == '2') updateState(READY);        // Handle READY state
+    else if (input == '3') updateState(CAPTURING);
+    else if (input == '4') updateState(FLIPPING);
+    else if (input == '5') updateState(DONE);
+    else if (input == '9') updateState(ERROR);
     else Serial.println("Invalid Serial input.");
   }
 
