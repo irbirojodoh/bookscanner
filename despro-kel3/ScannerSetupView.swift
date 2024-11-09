@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ContentView: View {
+struct ScannerSetupView: View {
     @State private var bleManager = BLEManager()
     @State private var valueToWrite = ""
 
@@ -8,7 +8,7 @@ struct ContentView: View {
         NavigationStack {
             Group {
                 if bleManager.pickerDismissed, let scanner = bleManager.currentScanner {
-                    bleTestView
+                    HomeView()
                 } else {
                     setupView
                 }
