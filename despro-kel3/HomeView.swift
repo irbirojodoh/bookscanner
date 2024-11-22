@@ -3,29 +3,32 @@ import AVFoundation
 
 struct HomeView: View {
     @State private var bleManager = BLEManager()
-    @State private var capturedImage: UIImage?
-    @State private var isCapturing = false
-    @State private var isShowingAlert = false  // To trigger the alert
+    @State private var scannedImages: [UIImage] = []
+    @State private var isShowingScanner = false
+    @State private var isShowingAlert = false
     @State private var bleReceivedValue = ""
     @State private var timer: Timer?
-    @State private var navigateToBleTestView = false  // State for triggering navigation
-
+    @State private var navigateToBleTestView = false
+    @State private var couldScan = false  // Add state for scanning permission
+    @State private var scanBlockedAlert = false  // Alert for when scanning is blocked
+    
     var body: some View {
         NavigationView {
             VStack {
                 Spacer()
                 
-                Image(systemName: "doc.plaintext")
-                    .font(.system(size: 80))
-                    .foregroundColor(.gray)
-                
-                Text("You don't have any document!")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .padding(.top, 16)
-                
-                if let image = capturedImage {
-                    Image(uiImage: image)
+                if scannedImages.isEmpty {
+                    Image(systemName: "doc.plaintext")
+                        .font(.system(size: 80))
+                        .foregroundColor(.gray)
+                    
+                    Text("You don't have any document!")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .padding(.top, 16)
+                } else {
+                    // Display the most recently scanned image
+                    Image(uiImage: scannedImages[0])
                         .resizable()
                         .scaledToFit()
                         .frame(height: 300)
@@ -39,102 +42,121 @@ struct HomeView: View {
                     .padding(.top, 8)
                     .padding(.horizontal, 40)
                 
+                // Status indicator for IoT scanning permission
+                Text(couldScan ? "Ready to scan" : "Waiting for document positioning...")
+                    .foregroundColor(couldScan ? .green : .orange)
+                    .padding()
+                
                 Spacer()
                 
                 HStack {
                     Spacer()
                     
                     Button(action: {
-                        if bleManager.isConnected {
-                            isCapturing = true
-                            // Only send the command to BLE if connected
-                            bleManager.writeValue("1")  // Send value "1" to BLE device
-                        } else {
-                            // Show the alert if BLE is not connected
-                            isShowingAlert = true
-                        }
+//                        if !bleManager.isConnected {
+//                            isShowingAlert = true
+//                        } else
+//                        if !couldScan {
+//                            scanBlockedAlert = true
+//                        } else {
+                            isShowingScanner = true
+//                        }
                     }) {
-                        Image(systemName: "plus")
+                        Image(systemName: "document.viewfinder.fill")
                             .font(.title)
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .padding()
                     }
-                    .sheet(isPresented: $isCapturing) {
-                        CameraViewWrapper(capturedImage: $capturedImage, isCapturing: $isCapturing, bleReceivedValue: $bleReceivedValue, bleManager:$bleManager)
-                    }
-
+                    
                     Spacer()
                 }
             }
             .navigationBarTitle("MEMORIES Scanner", displayMode: .inline)
             .navigationBarItems(trailing:
-                    // First Menu (Connect/Disconnect)
-                                Menu {
-                                    ScrollView {
-                                        VStack {
-                                            // First Button (Connect/Disconnect)
-                                            Button(action: {
-                                                bleManager.isConnected ? bleManager.disconnect() : bleManager.connect()
-                                            }) {
-                                                Text(bleManager.isConnected ? "Disconnect" : "Connect")
-                                                    .frame(maxWidth: .infinity)
-                                                    .font(.headline.weight(.semibold))
-                                            }
-                                            .padding()
-                                            .background(bleManager.isConnected ? Color.red : Color.blue)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(8)
-                                            
-                                            // Second Button with NavigationLink to BleTestView
-                                            NavigationLink(destination: BleTestView(bleManager: $bleManager)) {
-                                                Button(action: {
-                                                    // Action if needed when the button is tapped
-                                                }) {
-                                                    Text("Go to BleTestView")
-                                                        .frame(maxWidth: .infinity)
-                                                        .font(.headline.weight(.semibold))
-                                                }
-                                            }
-            
-
-                                        }
-                                    }
-                                } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.title2)
-                                        .foregroundColor(.gray)
-                                }
-
-                    
-                    // Second Menu (Navigate to BleTestView)
+                Menu {
+                    ScrollView {
+                        VStack {
+                            Button(action: {
+                                bleManager.isConnected ? bleManager.disconnect() : bleManager.connect()
+                            }) {
+                                Text(bleManager.isConnected ? "Disconnect" : "Connect")
+                                    .frame(maxWidth: .infinity)
+                                    .font(.headline.weight(.semibold))
+                            }
+                            .padding()
+                            .background(bleManager.isConnected ? Color.red : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                            
+                            NavigationLink(destination: BleTestView(bleManager: $bleManager)) {
+                                Text("Go to BleTestView")
+                                    .frame(maxWidth: .infinity)
+                                    .font(.headline.weight(.semibold))
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                }
             )
-            .alert(isPresented: $isShowingAlert) {
-                Alert(title: Text("Scanner is not connected"), message: Text("Please connect to the scanner before capturing."), dismissButton: .default(Text("OK")))
+            .sheet(isPresented: $isShowingScanner) {
+                DocumentScannerView(scannedImages: $scannedImages, couldScan: $couldScan) {
+                    // Completion handler after scanning
+                    if !scannedImages.isEmpty {
+                        print("Successfully scanned \(scannedImages.count) pages")
+                    }
+                }
             }
-            
-            // NavigationLink to BleTestView
+            .alert(isPresented: $isShowingAlert) {
+                Alert(
+                    title: Text("Scanner is not connected"),
+                    message: Text("Please connect to the scanner before capturing."),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
+            .alert("Waiting for Document", isPresented: $scanBlockedAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Please wait for the IoT device to position the document correctly before scanning.")
+            }
         }
         .onAppear {
-            // Optionally start BLE scan timer here if needed
             startBLEScanTimer()
+            setupBLECallbacks()
         }
         .onDisappear {
-            // Stop the BLE scan timer when the view disappears
             stopBLEScanTimer()
         }
     }
     
-    // Start the BLE scan timer
     private func startBLEScanTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { _ in
-            // Simulate updating the BLE received value
             bleReceivedValue = "Updated at \(Date())"
         }
     }
     
-    // Stop the timer when the view disappears
     private func stopBLEScanTimer() {
         timer?.invalidate()
         timer = nil
+    }
+    
+    // Add this method to handle BLE callbacks
+    private func setupBLECallbacks() {
+        // This is a placeholder - you'll need to implement the actual BLE callback
+        // handling in your BLEManager class
+        bleManager.onDataReceived = { data in
+            // Assuming the IoT device sends a specific signal to allow scanning
+            if let value = String(data: data, encoding: .utf8) {
+                // Update couldScan based on the IoT device signal
+                // This is an example - adjust the condition based on your IoT device's protocol
+                if value.contains("SCAN_READY") {
+                    self.couldScan = true
+                } else if value.contains("SCAN_COMPLETE") {
+                    self.couldScan = false
+                }
+            }
+        }
     }
 }

@@ -233,6 +233,9 @@
 			);
 			mainGroup = 84E99E622CD20E23009E20E2;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DD53786A2CF08E3E00DBC2C9 /* XCRemoteSwiftPackageReference "OpenScanner" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 84E99E6C2CD20E24009E20E2 /* Products */;
 			projectDirPath = "";
@@ -434,7 +437,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"despro-kel3/Preview Content\"";
-				DEVELOPMENT_TEAM = 78QLV448A6;
+				DEVELOPMENT_TEAM = XSHZNN2ULY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "despro-kel3/Info.plist";
@@ -467,7 +470,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"despro-kel3/Preview Content\"";
-				DEVELOPMENT_TEAM = 78QLV448A6;
+				DEVELOPMENT_TEAM = XSHZNN2ULY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "despro-kel3/Info.plist";
@@ -600,6 +603,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DD53786A2CF08E3E00DBC2C9 /* XCRemoteSwiftPackageReference "OpenScanner" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SkilletElveti/OpenScanner.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 84E99E632CD20E24009E20E2 /* Project object */;
 }

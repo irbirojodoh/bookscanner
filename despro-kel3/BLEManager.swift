@@ -105,7 +105,11 @@ class BLEManager: NSObject, ObservableObject {
     }
     
     
-    
+    var onDataReceived: ((Data) -> Void)? {
+        didSet {
+            // Setup the callback in your actual BLE implementation
+        }
+    }
     
     
 

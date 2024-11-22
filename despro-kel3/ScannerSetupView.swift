@@ -135,3 +135,10 @@ struct ScannerSetupView: View {
         }
     }
 }
+
+// Preview Provider
+struct ScannerSetupView_Previews: PreviewProvider {
+    static var previews: some View {
+        ScannerSetupView()
+    }
+}
