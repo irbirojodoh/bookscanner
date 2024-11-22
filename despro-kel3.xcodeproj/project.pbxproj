@@ -441,8 +441,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "despro-kel3/Info.plist";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires Bluetooth access to communicate with devices";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires Bluetooth access to communicate with devices 2";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Allow BT Usage";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Allow BT Peripheral";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -474,8 +475,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "despro-kel3/Info.plist";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires Bluetooth access to communicate with devices";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires Bluetooth access to communicate with devices 2";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Allow BT Usage";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Allow BT Peripheral";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

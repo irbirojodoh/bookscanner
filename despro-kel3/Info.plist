@@ -2,19 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to the camera to capture photos.</string>
-	<key>NSAccessorySetupKitSupports</key>
-	<array>
-		<string>Bluetooth</string>
-	</array>
 	<key>NSAccessorySetupBluetoothServices</key>
 	<array>
 		<string>4FAFC201-1FB5-459E-8FCC-C5C9C331914B</string>
 	</array>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Allow BT Peripheral</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Allow BT Usage</string>
+	<key>NSAccessorySetupKitSupports</key>
+	<array>
+		<string>Bluetooth</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to scan documents</string>
 </dict>
 </plist>

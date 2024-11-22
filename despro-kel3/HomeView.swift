@@ -1,6 +1,10 @@
 import SwiftUI
 import AVFoundation
+import UIKit
+import VisionKit
+import PDFKit
 
+// Modified HomeView with Save Button and PDF handling
 struct HomeView: View {
     @State private var bleManager = BLEManager()
     @State private var scannedImages: [UIImage] = []
@@ -9,40 +13,78 @@ struct HomeView: View {
     @State private var bleReceivedValue = ""
     @State private var timer: Timer?
     @State private var navigateToBleTestView = false
-    @State private var couldScan = false  // Add state for scanning permission
-    @State private var scanBlockedAlert = false  // Alert for when scanning is blocked
+    @State private var couldScan = false
+    @State private var scanBlockedAlert = false
+    @State private var pdfURL: URL?
+    @State private var showPDFPreview = false
+    @State private var savedPDFs: [URL] = []
+    @State private var showingSaveAlert = false
+    @State private var saveSuccess = false
+    @State private var customFileName = ""
+    @State private var showingSaveDialog = false
     
     var body: some View {
         NavigationView {
             VStack {
-                Spacer()
-                
-                if scannedImages.isEmpty {
-                    Image(systemName: "doc.plaintext")
-                        .font(.system(size: 80))
-                        .foregroundColor(.gray)
-                    
-                    Text("You don't have any document!")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .padding(.top, 16)
+                if !savedPDFs.isEmpty {
+                    List {
+                        ForEach(savedPDFs, id: \.self) { url in
+                            HStack {
+                                Image(systemName: "doc.fill")
+                                    .foregroundColor(.blue)
+                                Text(url.lastPathComponent)
+                                Spacer()
+                                Button(action: {
+                                    pdfURL = url
+                                    showPDFPreview = true
+                                }) {
+                                    Image(systemName: "eye")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .onDelete(perform: deletePDF)
+                    }
                 } else {
-                    // Display the most recently scanned image
-                    Image(uiImage: scannedImages[0])
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 300)
-                        .padding()
+                    Spacer()
+                    
+                    if !scannedImages.isEmpty {
+                        // Display the most recently scanned image
+                        Image(uiImage: scannedImages[0])
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 300)
+                            .padding()
+                        
+                        // Save Button
+                        Button(action: {
+                            showingSaveDialog = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                Text("Save as PDF")
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(scannedImages.isEmpty)
+                        
+                    } else {
+                        // Empty state UI
+                        Image(systemName: "doc.plaintext")
+                            .font(.system(size: 80))
+                            .foregroundColor(.gray)
+                        
+                        Text("You don't have any document!")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .padding(.top, 16)
+                    }
                 }
                 
-                Text("Scan or add your document by clicking the + button below and save as MEMORIES format")
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 8)
-                    .padding(.horizontal, 40)
-                
-                // Status indicator for IoT scanning permission
+                // Status indicator
                 Text(couldScan ? "Ready to scan" : "Waiting for document positioning...")
                     .foregroundColor(couldScan ? .green : .orange)
                     .padding()
@@ -55,8 +97,7 @@ struct HomeView: View {
                     Button(action: {
 //                        if !bleManager.isConnected {
 //                            isShowingAlert = true
-//                        } else
-//                        if !couldScan {
+//                        } else if !couldScan {
 //                            scanBlockedAlert = true
 //                        } else {
                             isShowingScanner = true
@@ -102,33 +143,106 @@ struct HomeView: View {
                 }
             )
             .sheet(isPresented: $isShowingScanner) {
-                DocumentScannerView(scannedImages: $scannedImages, couldScan: $couldScan) {
-                    // Completion handler after scanning
+                DocumentScannerView(scannedImages: $scannedImages,
+                                  couldScan: $couldScan,
+                                  pdfURL: $pdfURL) {
+                    print("📷 Scanner completion handler called")
+                    print("📷 Current scanned images count: \(scannedImages.count)")
                     if !scannedImages.isEmpty {
-                        print("Successfully scanned \(scannedImages.count) pages")
+                        print("📷 Has scanned images, loading saved PDFs")
+                        loadSavedPDFs()
+                    } else {
+                        print("📷 No scanned images available")
                     }
                 }
             }
-            .alert(isPresented: $isShowingAlert) {
+            .sheet(isPresented: $showPDFPreview) {
+                if let pdfURL = pdfURL {
+                    PDFPreviewView(pdfURL: pdfURL)
+                }
+            }
+            .alert("Save PDF", isPresented: $showingSaveDialog) {
+                TextField("Enter file name", text: $customFileName)
+                Button("Cancel", role: .cancel) {
+                    customFileName = ""
+                }
+                Button("Save") {
+                    savePDF()
+                }
+            } message: {
+                Text("Please enter a name for your PDF file")
+            }
+            .alert(isPresented: $showingSaveAlert) {
                 Alert(
-                    title: Text("Scanner is not connected"),
-                    message: Text("Please connect to the scanner before capturing."),
+                    title: Text(saveSuccess ? "Success" : "Error"),
+                    message: Text(saveSuccess ? "PDF saved successfully" : "Failed to save PDF"),
                     dismissButton: .default(Text("OK"))
                 )
             }
-            .alert("Waiting for Document", isPresented: $scanBlockedAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Please wait for the IoT device to position the document correctly before scanning.")
-            }
         }
         .onAppear {
+            loadSavedPDFs()
             startBLEScanTimer()
             setupBLECallbacks()
+            
+            // Add notification observer
+            NotificationCenter.default.addObserver(
+                forName: PDFManager.pdfSavedNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                loadSavedPDFs()
+            }
         }
-        .onDisappear {
-            stopBLEScanTimer()
+    }
+    
+    private func savePDF() {
+        print("💾 Starting PDF save process")
+        print("💾 Number of images to save: \(scannedImages.count)")
+        
+        guard !scannedImages.isEmpty else {
+            print("❌ No images to save")
+            saveSuccess = false
+            showingSaveAlert = true
+            return
         }
+        
+        let fileName = customFileName.isEmpty ?
+            "Scan_\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))" :
+            customFileName
+        
+        print("💾 Saving with filename: \(fileName)")
+        
+        if let url = PDFManager.createPDF(from: scannedImages, fileName: fileName) {
+            print("💾 Successfully created PDF at: \(url.path)")
+            pdfURL = url
+            saveSuccess = true
+            scannedImages = [] // Clear the scanned images after successful save
+        } else {
+            print("❌ Failed to create PDF")
+            saveSuccess = false
+        }
+        
+        showingSaveAlert = true
+        customFileName = ""
+    }
+    
+    private func loadSavedPDFs() {
+        savedPDFs = PDFManager.getSavedPDFs()
+        print("Loaded PDFs: \(savedPDFs.count)")
+    }
+    
+    private func deletePDF(at offsets: IndexSet) {
+        for index in offsets {
+            let pdfURL = savedPDFs[index]
+            do {
+                try FileManager.default.removeItem(at: pdfURL)
+                print("Successfully deleted PDF at: \(pdfURL.path)")
+            } catch {
+                print("Error deleting PDF: \(error)")
+            }
+        }
+        loadSavedPDFs()
     }
     
     private func startBLEScanTimer() {
@@ -157,6 +271,22 @@ struct HomeView: View {
                     self.couldScan = false
                 }
             }
+        }
+    }
+}
+
+struct PDFPreviewView: UIViewRepresentable {
+    let pdfURL: URL
+    
+    func makeUIView(context: Context) -> PDFView {
+        let pdfView = PDFView()
+        pdfView.autoScales = true
+        return pdfView
+    }
+    
+    func updateUIView(_ uiView: PDFView, context: Context) {
+        if let document = PDFDocument(url: pdfURL) {
+            uiView.document = document
         }
     }
 }
