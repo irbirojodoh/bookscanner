@@ -24,94 +24,89 @@ struct HomeView: View {
     @State private var showingSaveDialog = false
     
     var body: some View {
-        NavigationView {
-            VStack {
-                if !savedPDFs.isEmpty {
-                    List {
-                        ForEach(savedPDFs, id: \.self) { url in
-                            HStack {
-                                Image(systemName: "doc.fill")
-                                    .foregroundColor(.blue)
-                                Text(url.lastPathComponent)
-                                Spacer()
-                                Button(action: {
-                                    pdfURL = url
-                                    showPDFPreview = true
-                                }) {
-                                    Image(systemName: "eye")
-                                        .foregroundColor(.blue)
+                NavigationView {
+                    VStack {
+                        // Show saved PDFs list
+                        if !savedPDFs.isEmpty {
+                            List {
+                                ForEach(savedPDFs, id: \.self) { url in
+                                    HStack {
+                                        Image(systemName: "doc.fill")
+                                            .foregroundColor(.blue)
+                                        Text(url.lastPathComponent)
+                                        Spacer()
+                                        Button(action: {
+                                            pdfURL = url
+                                            showPDFPreview = true
+                                        }) {
+                                            Image(systemName: "eye")
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
                                 }
+                                .onDelete(perform: deletePDF)
                             }
+                            .frame(maxHeight: UIScreen.main.bounds.height * 0.3) // Limit list height
                         }
-                        .onDelete(perform: deletePDF)
-                    }
-                } else {
-                    Spacer()
-                    
-                    if !scannedImages.isEmpty {
-                        // Display the most recently scanned image
-                        Image(uiImage: scannedImages[0])
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 300)
-                            .padding()
                         
-                        // Save Button
-                        Button(action: {
-                            showingSaveDialog = true
-                        }) {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("Save as PDF")
+                        Spacer()
+                        
+                        // Show scanned images and save button
+                        if !scannedImages.isEmpty {
+                            // Display the most recently scanned image
+                            Image(uiImage: scannedImages[0])
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 300)
+                                .padding()
+                            
+                            // Save Button
+                            Button(action: {
+                                showingSaveDialog = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.down")
+                                    Text("Save as PDF")
+                                }
+                                .padding()
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
                             }
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .disabled(scannedImages.isEmpty)
+                        } else if savedPDFs.isEmpty {
+                            // Empty state UI
+                            Image(systemName: "doc.plaintext")
+                                .font(.system(size: 80))
+                                .foregroundColor(.gray)
+                            
+                            Text("You don't have any document!")
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .padding(.top, 16)
                         }
-                        .disabled(scannedImages.isEmpty)
                         
-                    } else {
-                        // Empty state UI
-                        Image(systemName: "doc.plaintext")
-                            .font(.system(size: 80))
-                            .foregroundColor(.gray)
-                        
-                        Text("You don't have any document!")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .padding(.top, 16)
-                    }
-                }
-                
-                // Status indicator
-                Text(couldScan ? "Ready to scan" : "Waiting for document positioning...")
-                    .foregroundColor(couldScan ? .green : .orange)
-                    .padding()
-                
-                Spacer()
-                
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-//                        if !bleManager.isConnected {
-//                            isShowingAlert = true
-//                        } else if !couldScan {
-//                            scanBlockedAlert = true
-//                        } else {
-                            isShowingScanner = true
-//                        }
-                    }) {
-                        Image(systemName: "document.viewfinder.fill")
-                            .font(.title)
-                            .foregroundStyle(.blue)
+                        // Status indicator
+                        Text(couldScan ? "Ready to scan" : "Waiting for document positioning...")
+                            .foregroundColor(couldScan ? .green : .orange)
                             .padding()
+                        
+                        Spacer()
+                        
+                        // Scan button
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                isShowingScanner = true
+                            }) {
+                                Image(systemName: "document.viewfinder.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.blue)
+                                    .padding()
+                            }
+                            Spacer()
+                        }
                     }
-                    
-                    Spacer()
-                }
-            }
             .navigationBarTitle("MEMORIES Scanner", displayMode: .inline)
             .navigationBarItems(trailing:
                 Menu {
