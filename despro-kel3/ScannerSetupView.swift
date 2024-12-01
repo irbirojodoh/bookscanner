@@ -3,12 +3,13 @@ import SwiftUI
 struct ScannerSetupView: View {
     @State private var bleManager = BLEManager()
     @State private var valueToWrite = ""
+    @StateObject var homeVM = HomeViewModel()
 
     var body: some View {
         NavigationStack {
             Group {
                 if bleManager.pickerDismissed, let scanner = bleManager.currentScanner {
-                    HomeView(bleManager: $bleManager)
+                    TabBarView(bleManager: $bleManager)
                 } else {
                     setupView
                 }

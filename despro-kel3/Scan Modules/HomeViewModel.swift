@@ -2,14 +2,6 @@
 //  HomeViewModel.swift
 //  despro-kel3
 //
-//  Created by Ibrahim Rijal on 01/12/24.
-//
-
-
-//
-//  HomeViewModel.swift
-//  despro-kel3
-//
 //  Created by Luthfi Misbachul Munir on 01/12/24.
 //
 
@@ -46,8 +38,8 @@ class HomeViewModel: ObservableObject {
         }
         
         let fileName = customFileName.isEmpty ?
-            "Scan_\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))" :
-            customFileName
+        "Scan_\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))" :
+        customFileName
         
         print("💾 Saving with filename: \(fileName)")
         
@@ -67,7 +59,6 @@ class HomeViewModel: ObservableObject {
     
     func loadSavedPDFs() {
         savedPDFs = PDFManager.getSavedPDFs()
-        print("Loaded PDFs: \(savedPDFs.count)")
     }
     
     func startBLEScanTimer() {

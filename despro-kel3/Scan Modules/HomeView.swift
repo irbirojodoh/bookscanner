@@ -1,39 +1,15 @@
 import SwiftUI
 import AVFoundation
-import UIKit
 import VisionKit
-import PDFKit
 
 // Modified HomeView with Save Button and PDF handling
 struct HomeView: View {
     @Binding var bleManager: BLEManager
-    @ObservedObject var homeVM: HomeViewModel = HomeViewModel()
+    @EnvironmentObject var homeVM: HomeViewModel
     
     var body: some View {
         NavigationView {
             VStack {
-                if !homeVM.savedPDFs.isEmpty {
-                    List {
-                        ForEach(homeVM.savedPDFs, id: \.self) { url in
-                            HStack {
-                                Image(systemName: "doc.fill")
-                                    .foregroundColor(.blue)
-                                Text(url.lastPathComponent)
-                                Spacer()
-                                Button(action: {
-                                    homeVM.pdfURL = url
-                                    homeVM.showPDFPreview = true
-                                }) {
-                                    Image(systemName: "eye")
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                        }
-                        .onDelete(perform: homeVM.deletePDF)
-                    }
-                    .frame(maxHeight: UIScreen.main.bounds.height * 0.3) // Limit list height
-                }
-                
                 Spacer()
                 
                 // Show scanned images and save button
@@ -71,41 +47,54 @@ struct HomeView: View {
                         .padding(.top, 16)
                 }
                 
-                // Status indicator
-                Text(homeVM.couldScan ? "Ready to scan" : "Waiting for document positioning...")
-                    .foregroundColor(homeVM.couldScan ? .green : .orange)
-                    .padding()
-                
-                Spacer()
-                
-                // Scan button
-                HStack {
-                    Spacer()
+                if bleManager.isConnected == true {
                     Button(action: {
                         homeVM.isShowingScanner = true
                     }) {
-                        Image(systemName: "document.viewfinder.fill")
-                            .font(.title)
-                            .foregroundStyle(.blue)
-                            .padding()
+                        VStack {
+                            Image(systemName: "scanner.fill")
+                                .font(.title)
+                                .foregroundStyle(.blue)
+                                .padding()
+                            
+                            Text("Start Scanning")
+                        }
                     }
-                    Spacer()
+                } else {
+                    Text("Bluetooth has not connected to the device.")
+                        .font(.headline)
+                        .bold()
+                    
+                    Button {
+                        bleManager.connect()
+                    } label: {
+                        Text("Connect Bluetooth")
+                            .font(.footnote)
+                            .foregroundStyle(.white)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.blue)
+                            )
+                    }
+                    
                 }
+                
+                Spacer()
             }
             .navigationBarTitle("MEMORIES Scanner", displayMode: .inline)
-            .navigationBarItems(trailing:
-                                    Menu {
+            .navigationBarItems(trailing: Menu {
                 ScrollView {
                     VStack {
                         Button(action: {
-                            homeVM.bleManager.isConnected ? homeVM.bleManager.disconnect() : homeVM.bleManager.connect()
+                            bleManager.isConnected ? bleManager.disconnect() : bleManager.connect()
                         }) {
-                            Text(homeVM.bleManager.isConnected ? "Disconnect" : "Connect")
+                            Text(bleManager.isConnected ? "Disconnect" : "Connect")
                                 .frame(maxWidth: .infinity)
                                 .font(.headline.weight(.semibold))
                         }
                         .padding()
-                        .background(homeVM.bleManager.isConnected ? Color.red : Color.blue)
+                        .background(bleManager.isConnected ? Color.red : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
@@ -134,11 +123,6 @@ struct HomeView: View {
                     } else {
                         print("📷 No scanned images available")
                     }
-                }
-            }
-            .sheet(isPresented: $homeVM.showPDFPreview) {
-                if let pdfURL = homeVM.pdfURL {
-                    PDFPreviewView(pdfURL: pdfURL)
                 }
             }
             .alert("Save PDF", isPresented: $homeVM.showingSaveDialog) {
@@ -173,22 +157,6 @@ struct HomeView: View {
             ) { _ in
                 homeVM.loadSavedPDFs()
             }
-        }
-    }
-}
-
-struct PDFPreviewView: UIViewRepresentable {
-    let pdfURL: URL
-    
-    func makeUIView(context: Context) -> PDFView {
-        let pdfView = PDFView()
-        pdfView.autoScales = true
-        return pdfView
-    }
-    
-    func updateUIView(_ uiView: PDFView, context: Context) {
-        if let document = PDFDocument(url: pdfURL) {
-            uiView.document = document
         }
     }
 }
