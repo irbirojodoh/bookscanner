@@ -6,6 +6,7 @@ import PDFKit
 
 // Modified HomeView with Save Button and PDF handling
 struct HomeView: View {
+    @Binding var bleManager: BLEManager
     @ObservedObject var homeVM: HomeViewModel = HomeViewModel()
     
     var body: some View {
@@ -122,7 +123,7 @@ struct HomeView: View {
             }
             )
             .sheet(isPresented: $homeVM.isShowingScanner) {
-                DocumentScannerView(scannedImages: $homeVM.scannedImages,
+                DocumentScannerView(bleManager: $bleManager, scannedImages: $homeVM.scannedImages,
                                     couldScan: $homeVM.couldScan,
                                     pdfURL: $homeVM.pdfURL) {
                     print("📷 Scanner completion handler called")
