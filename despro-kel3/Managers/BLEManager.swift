@@ -3,8 +3,6 @@ import SwiftUI
 import AccessorySetupKit
 import Foundation
 
-
-
 @Observable
 class BLEManager: NSObject, ObservableObject {
     var isConnected = false
@@ -20,12 +18,12 @@ class BLEManager: NSObject, ObservableObject {
     private var stateCharacteristic: CBCharacteristic?
     let characteristicUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26a8")
     let serviceUUID = CBUUID(string: "4fafc201-1fb5-459e-8fcc-c5c9c331914b")
-
+    
     
     private static let scanner: ASPickerDisplayItem = {
         let descriptor = ASDiscoveryDescriptor()
         descriptor.bluetoothServiceUUID = ScannerProperties.serviceUUID
-
+        
         return ASPickerDisplayItem(
             name: ScannerProperties.displayName,
             productImage: UIImage(named: "scanner")!, // Replace "scanner" with the actual name of your im
@@ -49,31 +47,32 @@ class BLEManager: NSObject, ObservableObject {
     
     func removeScanner() {
         guard let currentScanner else { return }
-
+        
         if isConnected {
             disconnect()
         }
-
+        
         session.removeAccessory(currentScanner) { _ in
             self.scannerState = ScannerState.IDLE
             self.currentScanner = nil
             self.centralManager = nil
         }
     }
-
+    
+    func connect() {
+        guard let centralManager, centralManager.state == .poweredOn, let peripheral else { return }
+        centralManager.connect(peripheral)
+        DispatchQueue.main.async {
+            self.isConnected = true
+        }
+    }
+    
     func disconnect() {
         guard let peripheral, let centralManager else { return }
         centralManager.cancelPeripheralConnection(peripheral)
-    }
-    func connect() {
-        guard
-            let centralManager, centralManager.state == .poweredOn,
-            let peripheral
-        else {
-            return
+        DispatchQueue.main.async {
+            self.isConnected = false
         }
-
-        centralManager.connect(peripheral)
     }
     
     
@@ -110,13 +109,6 @@ class BLEManager: NSObject, ObservableObject {
             // Setup the callback in your actual BLE implementation
         }
     }
-    
-    
-
-//    override init() {
-//        super.init()
-//        centralManager = CBCentralManager(delegate: self, queue: nil)
-//    }
     
     func startScanning() {
         if centralManager.state == .poweredOn {
@@ -160,24 +152,24 @@ extension BLEManager: CBCentralManagerDelegate {
         print("Connected to peripheral: \(peripheral)")
         peripheral.delegate = self
         peripheral.discoverServices([ScannerProperties.serviceUUID])
-
+        
         //scannerConnected = true
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        statusMessage = "Connected. Discovering services..."
-        peripheral.delegate = self
-        peripheral.discoverServices([serviceUUID])
-        isConnected = true
+        DispatchQueue.main.async {
+            self.isConnected = true
+        }
+    }
+    
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        DispatchQueue.main.async {
+            self.isConnected = false
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
         print("Failed to connect to peripheral: \(peripheral), error: \(error.debugDescription)")
-    }
-    
-    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
-        print("Disconnected from peripheral: \(peripheral)")
-        isConnected = false
     }
 }
 

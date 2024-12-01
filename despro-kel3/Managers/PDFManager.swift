@@ -78,11 +78,8 @@ class PDFManager {
         let fileManager = FileManager.default
         
         do {
-            let files = try fileManager.contentsOfDirectory(at: documentsPath,
-                                                          includingPropertiesForKeys: nil)
+            let files = try fileManager.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
             let pdfs = files.filter { $0.pathExtension.lowercased() == "pdf" }
-            pdfs.forEach { print("Found PDF: \($0.lastPathComponent)") }
-            print("Found \(pdfs.count) PDF files")
             return pdfs.sorted { $0.lastPathComponent < $1.lastPathComponent }
         } catch {
             print("Error getting PDFs: \(error)")
