@@ -8,7 +8,7 @@ struct ScannerSetupView: View {
         NavigationStack {
             Group {
                 if bleManager.pickerDismissed, let scanner = bleManager.currentScanner {
-                    HomeView()
+                    HomeView(bleManager: $bleManager)
                 } else {
                     setupView
                 }

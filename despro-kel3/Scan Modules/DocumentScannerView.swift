@@ -11,6 +11,7 @@ import VisionKit
 
 // First, create a DocumentScannerView wrapper for VNDocumentCameraViewController
 struct DocumentScannerView: UIViewControllerRepresentable {
+    @Binding var bleManager: BLEManager
     @Binding var scannedImages: [UIImage]
     @Binding var couldScan: Bool
     @Binding var pdfURL: URL?
@@ -46,13 +47,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
             print("📷 Scan completed with \(scan.pageCount) pages")
             
-            // Remove the guard condition as it might prevent scanning
-            // guard parent.couldScan else {
-            //     controller.dismiss(animated: true, completion: nil)
-            //     return
-            // }
-            
-            // Convert scanned pages to images
+            // Only handle scans initiated by the user manually
             var newScannedImages: [UIImage] = []
             
             for pageIndex in 0..<scan.pageCount {
@@ -61,14 +56,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 print("📷 Processed page \(pageIndex + 1)")
             }
             
-            print("📷 Total images captured: \(newScannedImages.count)")
-            
-            // Update scanned images on main thread
             DispatchQueue.main.async {
                 self.parent.scannedImages = newScannedImages
                 print("📷 Updated scannedImages binding with \(newScannedImages.count) images")
                 
-                // Don't automatically create PDF here - let the user do it with the save button
                 controller.dismiss(animated: true) {
                     print("📷 Scanner dismissed")
                     self.parent.completion()

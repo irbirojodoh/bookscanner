@@ -11,8 +11,8 @@ import SwiftUI
 struct despro_kel3App: App {
     var body: some Scene {
         WindowGroup {
-//            ScannerSetupView()
-            HomeView()
+           ScannerSetupView()
+//            HomeView()
         }
     }
 }
