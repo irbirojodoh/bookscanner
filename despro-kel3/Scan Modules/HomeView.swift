@@ -98,7 +98,7 @@ struct HomeView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
-                        NavigationLink(destination: BleTestView(bleManager: $homeVM.bleManager)) {
+                        NavigationLink(destination: BleTestView(bleManager: $bleManager)) {
                             Text("Go to BleTestView")
                                 .frame(maxWidth: .infinity)
                                 .font(.headline.weight(.semibold))

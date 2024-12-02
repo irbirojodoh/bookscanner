@@ -8,6 +8,8 @@
 import SwiftUI
 import AVFoundation
 import PDFKit
+import Vision
+import UIKit
 
 // A custom scanner with manual capture functionality using AVCaptureSession
 struct DocumentScannerView: UIViewControllerRepresentable {
@@ -184,6 +186,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 print("❌ Failed to save PDF")
             }
         }
+        
+
+        
+        // Handle detected document segmentation (cropping and rotation)
 
         func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
             if let error = error {

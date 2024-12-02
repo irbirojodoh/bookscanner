@@ -201,6 +201,9 @@ extension BLEManager: CBPeripheralDelegate {
         
         stateCharacteristic = characteristic
         statusMessage = "Ready to read/write"
+        
+        // Subscribe to notifications for this characteristic
+        peripheral.setNotifyValue(true, for: characteristic)
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -212,6 +215,9 @@ extension BLEManager: CBPeripheralDelegate {
         if let data = characteristic.value,
            let string = String(data: data, encoding: .utf8) {
             receivedValue = string
+            // You can also call onDataReceived here to notify about new data
+            onDataReceived?(data)
+            statusMessage = "Received data: \(string)"
         }
     }
     
