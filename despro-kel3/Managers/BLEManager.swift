@@ -2,6 +2,7 @@ import CoreBluetooth
 import SwiftUI
 import AccessorySetupKit
 import Foundation
+import Combine
 
 
 
@@ -20,6 +21,9 @@ class BLEManager: NSObject, ObservableObject {
     private var stateCharacteristic: CBCharacteristic?
     let characteristicUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26a8")
     let serviceUUID = CBUUID(string: "4fafc201-1fb5-459e-8fcc-c5c9c331914b")
+    
+    private var cancellables: Set<AnyCancellable> = []
+
 
     
     private static let scanner: ASPickerDisplayItem = {
@@ -37,6 +41,8 @@ class BLEManager: NSObject, ObservableObject {
     override init() {
         super.init()
         self.session.activate(on: DispatchQueue.main, eventHandler: handleSessionEvent(event:))
+        
+
     }
     
     func presentPicker() {

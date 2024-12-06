@@ -10,10 +10,12 @@ import AVFoundation
 import PDFKit
 import Vision
 import UIKit
+import CoreImage
+import Combine
 
 // A custom scanner with manual capture functionality using AVCaptureSession
 struct DocumentScannerView: UIViewControllerRepresentable {
-    @Binding var bleManager: BLEManager
+    @Binding public var bleManager: BLEManager
     @Binding var scannedImages: [UIImage]
     @Binding var couldScan: Bool
     @State private var capturedImages: [UIImage] = [] // To store captured images
@@ -21,13 +23,28 @@ struct DocumentScannerView: UIViewControllerRepresentable {
     var showDoneButton: Bool = true // Controls the visibility of the Done button
     let completion: () -> Void
 
+
+    
     func makeUIViewController(context: Context) -> CustomCameraViewController {
         print("📷 Creating CustomCameraViewController")
-        return CustomCameraViewController()
+        let viewController = CustomCameraViewController()
+        viewController.coordinator = context.coordinator // Assign coordinator
+        return viewController
+    }
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(bleManager: $bleManager)
     }
 
     func updateUIViewController(_ uiViewController: CustomCameraViewController, context: Context) {
         // Implement updates if needed
+    }
+    
+    class Coordinator: NSObject {
+        @Binding var bleManager: BLEManager
+
+        init(bleManager: Binding<BLEManager>) {
+            _bleManager = bleManager
+        }
     }
     
     class CustomCameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
@@ -39,13 +56,18 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         var stackView: UIStackView! // For stacking preview images
         var imageCountBadge: UILabel! // For showing image count badge
         var doneButton: UIButton!
+        var coordinator: Coordinator? // Reference to the coordinator
+        private var cancellable: AnyCancellable? // Store the subscription
 
-
+        
+        
         override func viewDidLoad() {
             super.viewDidLoad()
 
             // Initialize the capture session
             captureSession = AVCaptureSession()
+            
+            
 
             guard let camera = AVCaptureDevice.default(for: .video),
                   let input = try? AVCaptureDeviceInput(device: camera) else {
@@ -66,8 +88,8 @@ struct DocumentScannerView: UIViewControllerRepresentable {
 
             // Set up preview layer
             previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-            previewLayer.frame = view.bounds
-            previewLayer.videoGravity = .resizeAspectFill
+            previewLayer.videoGravity = .resizeAspect // Use .resizeAspect to maintain the aspect ratio
+            previewLayer.frame = view.bounds // Make the preview fill the view bounds
             view.layer.addSublayer(previewLayer)
 
             // Add a capture button
@@ -145,43 +167,153 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 doneButton.widthAnchor.constraint(equalToConstant: 100),
                 doneButton.heightAnchor.constraint(equalToConstant: 50)
             ])
+            
+            DispatchQueue.main.async {
+                // Automatically detect when receivedValue changes
+                if self.coordinator?.bleManager.receivedValue != nil {
+                    print("Value Changed")
+                }
+            }
         }
+        
+    
 
         @objc func capturePhoto() {
             print("📷 Capture button pressed")
+            coordinator?.bleManager.writeValue("3")
             let photoSettings = AVCapturePhotoSettings()
             captureOutput.capturePhoto(with: photoSettings, delegate: self)
         }
         
+        @objc func bleManagerValueChanged() {
+            // Check if the receivedValue is not empty
+            if let receivedValue = coordinator?.bleManager.receivedValue, !receivedValue.isEmpty {
+                print("📷 BLE manager triggered capture with value: \(receivedValue)")
+            //capturePhoto() // Trigger photo capture when receivedValue is not empty
+            } else {
+                print("⚠️ Received value is empty, skipping capture.")
+            }
+        }
+        
+
+        
+        func cropImageToDetectedDocument(_ image: UIImage, completion: @escaping (UIImage?) -> Void) {
+            guard let cgImage = image.cgImage else {
+                print("❌ Failed to get CGImage from UIImage")
+                completion(nil)
+                return
+            }
+
+            // Create a document segmentation request
+            let request = VNDetectDocumentSegmentationRequest { request, error in
+                if let error = error {
+                    print("❌ Error detecting document: \(error.localizedDescription)")
+                    completion(nil)
+                    return
+                }
+
+                // Retrieve the first detected document observation
+                guard let observations = request.results as? [VNRectangleObservation],
+                      let document = observations.first else {
+                    print("⚠️ No document detected")
+                    completion(nil)
+                    return
+                }
+
+                // Convert Vision coordinates to CoreGraphics coordinates
+                let imageWidth = CGFloat(cgImage.width)
+                let imageHeight = CGFloat(cgImage.height)
+
+                let boundingBox = document.boundingBox
+                let croppingRect = CGRect(
+                    x: boundingBox.origin.x * imageWidth,
+                    y: (1 - boundingBox.origin.y - boundingBox.height) * imageHeight,
+                    width: boundingBox.width * imageWidth,
+                    height: boundingBox.height * imageHeight
+                )
+
+                // Crop the image based on the detected document rect
+                if let croppedCgImage = cgImage.cropping(to: croppingRect) {
+                    let croppedImage = UIImage(cgImage: croppedCgImage)
+                    completion(croppedImage)
+                } else {
+                    print("❌ Failed to crop CGImage")
+                    completion(nil)
+                }
+            }
+
+            // Run the request in the background
+            let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    try requestHandler.perform([request])
+                } catch {
+                    print("❌ Error performing VNDetectDocumentSegmentationRequest: \(error.localizedDescription)")
+                    completion(nil)
+                }
+            }
+        }
+        
+        func processImageForLegibility(_ image: UIImage) -> UIImage? {
+            // Convert UIImage to CIImage for processing
+            guard let ciImage = CIImage(image: image) else {
+                print("❌ Failed to convert UIImage to CIImage")
+                return nil
+            }
+            
+            // Step 1: Apply brightness and contrast adjustment
+            let whitenFilter = CIFilter(name: "CIColorControls")
+            whitenFilter?.setValue(ciImage, forKey: kCIInputImageKey)
+            
+            // Adjust contrast and brightness:
+            whitenFilter?.setValue(1.5, forKey: kCIInputContrastKey)  // Increase contrast to make text more legible
+            whitenFilter?.setValue(0.3, forKey: kCIInputBrightnessKey) // Lighten the image to make paper appear whiter
+            
+            guard let whitenedImage = whitenFilter?.outputImage else {
+                print("❌ Failed to apply whiten filter")
+                return nil
+            }
+
+            // Step 2: Convert back to UIImage
+            let context = CIContext()
+            if let cgImage = context.createCGImage(whitenedImage, from: whitenedImage.extent) {
+                let processedImage = UIImage(cgImage: cgImage)
+                return processedImage
+            }
+            
+            return nil
+        }
+        
+        
         
         @objc func processAndSavePDF() {
             print("📄 Generating PDF")
-            // Create a PDF document
-            let pdfDocument = PDFDocument()
-
-            for image in capturedImages {
-                let pdfPage = PDFPage(image: image)
-                guard let page = pdfPage else {
-                    print("Failed to unwrap")
-                    return
-                }
-                pdfDocument.insert(page, at: pdfDocument.pageCount)
-
-            }
-
-            // Save the PDF to a file
+            
+            // Get the URL for the PDF file
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            // Get the current date and time
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
             let timestamp = dateFormatter.string(from: Date())
-
-            // Generate the file URL with the timestamp included
             let pdfURL = documentsDirectory.appendingPathComponent("scanned_document_\(timestamp).pdf")
 
-            if pdfDocument.write(to: pdfURL) {
+            // Start the PDF context
+            UIGraphicsBeginPDFContextToFile(pdfURL.path, .zero, nil)
+
+            for image in capturedImages {
+                // Get the image size
+                let imageSize = image.size
+                // Set the page size to match the image size
+                UIGraphicsBeginPDFPageWithInfo(CGRect(origin: .zero, size: imageSize), nil)
+                // Draw the image onto the PDF page
+                image.draw(in: CGRect(origin: .zero, size: imageSize))
+            }
+
+            // End the PDF context
+            UIGraphicsEndPDFContext()
+
+            // Check if the PDF was successfully created and saved
+            if FileManager.default.fileExists(atPath: pdfURL.path) {
                 print("✅ PDF saved successfully at \(pdfURL.path)")
-                // Pass the URL to the parent view or perform further actions
             } else {
                 print("❌ Failed to save PDF")
             }
@@ -203,16 +335,31 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 return
             }
 
-            // Append the captured image
-            capturedImages.append(image)
-            print("📷 Photo captured successfully: \(capturedImages.count) images in total")
+            // Deteksi dan potong dokumen
+            cropImageToDetectedDocument(image) { croppedImage in
+                guard let croppedImage = croppedImage else {
+                    print("⚠️ No document detected, using original image")
+                    DispatchQueue.main.async {
+                        self.updatePreviewStack(with: image)
+                    }
+                    return
+                }
 
-            // Update the stack view and badge
-            DispatchQueue.main.async {
-                self.updatePreviewStack(with: image)
+                // Apply image processing (whiten paper and enhance text)
+                if let processedImage = self.processImageForLegibility(croppedImage) {
+                    // Add the processed image to the stack
+                    DispatchQueue.main.async {
+                        self.capturedImages.append(processedImage)
+                        print("📷 Processed photo added: \(self.capturedImages.count) images in total")
+                        self.updatePreviewStack(with: processedImage)
+                    }
+                } else {
+                    print("❌ Failed to process the image for legibility")
+                }
             }
         }
-
+        
+        
         func updatePreviewStack(with image: UIImage) {
             capturedImages.append(image) // Add the captured image to the array
             // Your logic to create the stack of images
@@ -243,6 +390,16 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             super.viewWillDisappear(animated)
             captureSession.stopRunning()
         }
+        
+//        deinit {
+//            NotificationCenter.default.removeObserver(self, name: .bleManagerReceivedValueChanged, object: nil)
+//        }
+        
+        
     }
 
+
+}
+extension Notification.Name {
+    static let bleManagerReceivedValueChanged = Notification.Name("bleManagerReceivedValueChanged")
 }
