@@ -27,8 +27,12 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         print("📷 Creating CustomCameraViewController")
         let viewController = CustomCameraViewController()
         viewController.coordinator = context.coordinator // Assign coordinator
+        viewController.clearImagesOnDismiss = { [weak viewController] in
+            viewController?.clearStackedImages()
+        }
         return viewController
     }
+    
     func makeCoordinator() -> Coordinator {
         return Coordinator(bleManager: $bleManager)
     }
@@ -48,6 +52,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         var previewLayer: AVCaptureVideoPreviewLayer!
         var captureOutput: AVCapturePhotoOutput!
         var capturedImages: [UIImage] = []
+        var clearImagesOnDismiss: (() -> Void)?
         var captureButton: UIButton!
         var stackView: UIStackView! // For stacking preview images
         var imageCountBadge: UILabel! // For showing image count badge
@@ -257,6 +262,24 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             }
         }
         
+        func clearStackedImages() {
+            // Remove all subviews from the window that are preview images
+            if let keyWindow = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow }) {
+                
+                keyWindow.subviews.forEach { subview in
+                    if subview is UIImageView {
+                        subview.removeFromSuperview()
+                    }
+                }
+            }
+            
+            // Clear the capturedImages array
+            capturedImages.removeAll()
+        }
+        
         func processImageForLegibility(_ image: UIImage) -> UIImage? {
             // Convert UIImage to CIImage for processing
             guard let ciImage = CIImage(image: image) else {
@@ -392,16 +415,9 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
             captureSession.stopRunning()
+            clearImagesOnDismiss?()
         }
-        
-//        deinit {
-//            NotificationCenter.default.removeObserver(self, name: .bleManagerReceivedValueChanged, object: nil)
-//        }
-        
-        
     }
-
-
 }
 extension Notification.Name {
     static let bleManagerReceivedValueChanged = Notification.Name("bleManagerReceivedValueChanged")
