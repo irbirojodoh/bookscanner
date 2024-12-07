@@ -114,7 +114,7 @@ struct HomeView: View {
             .sheet(isPresented: $homeVM.isShowingScanner) {
                 DocumentScannerView(bleManager: $bleManager, scannedImages: $homeVM.scannedImages,
                                     couldScan: $homeVM.couldScan,
-                                    pdfURL: $homeVM.pdfURL) {
+                                    pdfURL: $homeVM.pdfURL, isShowingScanner: $homeVM.isShowingScanner) {
                     print("📷 Scanner completion handler called")
                     print("📷 Current scanned images count: \(homeVM.scannedImages.count)")
                     if !homeVM.scannedImages.isEmpty {

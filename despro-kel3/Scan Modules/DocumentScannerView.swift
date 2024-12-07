@@ -18,35 +18,39 @@ struct DocumentScannerView: UIViewControllerRepresentable {
     @Binding public var bleManager: BLEManager
     @Binding var scannedImages: [UIImage]
     @Binding var couldScan: Bool
-    @State private var capturedImages: [UIImage] = [] // To store captured images
-    @Binding var pdfURL: URL? // To store the generated PDF URL
-    var showDoneButton: Bool = true // Controls the visibility of the Done button
+    @Binding var pdfURL: URL?
+    @Binding var isShowingScanner: Bool // Add this to dismiss the scanner
     let completion: () -> Void
     
     func makeUIViewController(context: Context) -> CustomCameraViewController {
         print("📷 Creating CustomCameraViewController")
         let viewController = CustomCameraViewController()
-        viewController.coordinator = context.coordinator // Assign coordinator
+        viewController.coordinator = context.coordinator
         viewController.clearImagesOnDismiss = { [weak viewController] in
             viewController?.clearStackedImages()
         }
+        viewController.dismissHandler = { capturedImages in
+                    self.scannedImages = capturedImages
+                    self.isShowingScanner = false
+                    self.completion()
+                }
         return viewController
     }
     
     func makeCoordinator() -> Coordinator {
         return Coordinator(bleManager: $bleManager)
     }
-
-    func updateUIViewController(_ uiViewController: CustomCameraViewController, context: Context) {
-        // Implement updates if needed
-    }
+    
+    func updateUIViewController(_ uiViewController: CustomCameraViewController, context: Context) {}
+    
     class Coordinator: NSObject {
         @Binding var bleManager: BLEManager
-
+        
         init(bleManager: Binding<BLEManager>) {
             _bleManager = bleManager
         }
     }
+    
     class CustomCameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         var captureSession: AVCaptureSession!
         var previewLayer: AVCaptureVideoPreviewLayer!
@@ -58,56 +62,79 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         var imageCountBadge: UILabel! // For showing image count badge
         var doneButton: UIButton!
         var coordinator: Coordinator? // Reference to the coordinator
+        var dismissHandler: (([UIImage]) -> Void)?
         private var cancellable: AnyCancellable? // Store the subscription
-
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            // Initialize the capture session
+        
+        func setupCaptureSession() {
             captureSession = AVCaptureSession()
-            
-            
-
             guard let camera = AVCaptureDevice.default(for: .video),
                   let input = try? AVCaptureDeviceInput(device: camera) else {
                 print("❌ Failed to access the camera")
                 return
             }
-
-            // Add input to the session
+            
             if captureSession.canAddInput(input) {
                 captureSession.addInput(input)
             }
-
-            // Set up photo output
+            
             captureOutput = AVCapturePhotoOutput()
             if captureSession.canAddOutput(captureOutput) {
                 captureSession.addOutput(captureOutput)
             }
-
-            // Set up preview layer
+        }
+        
+        func setupPreviewLayer() {
             previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-            previewLayer.videoGravity = .resizeAspect // Use .resizeAspect to maintain the aspect ratio
-            previewLayer.frame = view.bounds // Make the preview fill the view bounds
+            previewLayer.videoGravity = .resizeAspect
+            previewLayer.frame = view.bounds
             view.layer.addSublayer(previewLayer)
-
-            // Add a capture button
+        }
+        
+        func setupCaptureButton() {
             captureButton = UIButton(type: .system)
-            captureButton.setTitle("Capture", for: .normal)
-            captureButton.backgroundColor = .systemBlue
-            captureButton.setTitleColor(.white, for: .normal)
-            captureButton.layer.cornerRadius = 25
+            captureButton.setImage(UIImage(systemName: "circle.fill"), for: .normal)
+            captureButton.tintColor = .white
+            captureButton.backgroundColor = .clear
+            captureButton.layer.borderColor = UIColor.white.cgColor
+            captureButton.layer.borderWidth = 5
+            captureButton.layer.cornerRadius = 40
             captureButton.addTarget(self, action: #selector(capturePhoto), for: .touchUpInside)
             captureButton.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(captureButton)
-
-            // Layout the capture button
+            
             NSLayoutConstraint.activate([
                 captureButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 captureButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -50),
-                captureButton.widthAnchor.constraint(equalToConstant: 100),
-                captureButton.heightAnchor.constraint(equalToConstant: 50)
+                captureButton.widthAnchor.constraint(equalToConstant: 80),
+                captureButton.heightAnchor.constraint(equalToConstant: 80)
             ])
-
+        }
+        
+        func setupDoneButton() {
+            doneButton = UIButton(type: .system)
+            doneButton.setTitle("Save", for: .normal)
+            doneButton.backgroundColor = .systemBlue
+            doneButton.setTitleColor(.white, for: .normal)
+            doneButton.layer.cornerRadius = 10
+            doneButton.isHidden = capturedImages.isEmpty
+            doneButton.addTarget(self, action: #selector(saveAndDismiss), for: .touchUpInside)
+            doneButton.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(doneButton)
+            
+            NSLayoutConstraint.activate([
+                doneButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+                doneButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -50),
+                doneButton.widthAnchor.constraint(equalToConstant: 100),
+                doneButton.heightAnchor.constraint(equalToConstant: 50)
+            ])
+        }
+        
+        @objc func saveAndDismiss() {
+            // Call the dismiss handler with captured images
+            dismissHandler?(capturedImages)
+        }
+        
+        func setUpStackView() {
             // Add a stack view for images
             stackView = UIStackView()
             stackView.axis = .vertical
@@ -116,13 +143,15 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             stackView.spacing = -10 // Slight overlap for stacked appearance
             stackView.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(stackView)
-
+            
             // Layout the stack view
             NSLayoutConstraint.activate([
                 stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
                 stackView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16),
             ])
-
+        }
+        
+        func setupImageCountBadge() {
             // Add a badge for the image count
             imageCountBadge = UILabel()
             imageCountBadge.backgroundColor = .systemRed
@@ -134,7 +163,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             imageCountBadge.isHidden = true // Initially hidden
             imageCountBadge.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(imageCountBadge)
-
+            
             // Layout the badge
             NSLayoutConstraint.activate([
                 imageCountBadge.centerXAnchor.constraint(equalTo: stackView.trailingAnchor),
@@ -142,32 +171,27 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 imageCountBadge.widthAnchor.constraint(equalToConstant: 30),
                 imageCountBadge.heightAnchor.constraint(equalToConstant: 30),
             ])
-
+        }
+        
+        func startCaptureSession() {
             // Start session in the background
             DispatchQueue.global(qos: .userInitiated).async {
                 self.captureSession.startRunning()
             }
             
-            doneButton = UIButton(type: .system)
-            doneButton.setTitle("Done", for: .normal)
-            doneButton.backgroundColor = .systemGreen
-            doneButton.setTitleColor(.white, for: .normal)
-            doneButton.layer.cornerRadius = 25
-            doneButton.isHidden = false
-            doneButton.addTarget(self, action: #selector(processAndSavePDF), for: .touchUpInside)
-            doneButton.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(doneButton)
-
-            // Layout the done button
-            NSLayoutConstraint.activate([
-                doneButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                doneButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
-                doneButton.widthAnchor.constraint(equalToConstant: 100),
-                doneButton.heightAnchor.constraint(equalToConstant: 50)
-            ])
-            
             // Observe changes to `receivedValue` in BLEManager
             observeReceivedValue()
+        }
+        
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            setupCaptureSession()
+            setupPreviewLayer()
+            setupCaptureButton()
+            setupDoneButton()
+            setUpStackView()
+            setupImageCountBadge()
+            startCaptureSession()
         }
         
         private func observeReceivedValue() {
@@ -195,8 +219,8 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 capturePhoto()
             }
         }
-    
-
+        
+        
         @objc func capturePhoto() {
             print("📷 Capture button pressed")
             coordinator?.bleManager.writeValue("3")
@@ -211,7 +235,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 completion(nil)
                 return
             }
-
+            
             // Create a document segmentation request
             let request = VNDetectDocumentSegmentationRequest { request, error in
                 if let error = error {
@@ -219,7 +243,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     completion(nil)
                     return
                 }
-
+                
                 // Retrieve the first detected document observation
                 guard let observations = request.results as? [VNRectangleObservation],
                       let document = observations.first else {
@@ -227,11 +251,11 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     completion(nil)
                     return
                 }
-
+                
                 // Convert Vision coordinates to CoreGraphics coordinates
                 let imageWidth = CGFloat(cgImage.width)
                 let imageHeight = CGFloat(cgImage.height)
-
+                
                 let boundingBox = document.boundingBox
                 let croppingRect = CGRect(
                     x: boundingBox.origin.x * imageWidth,
@@ -239,7 +263,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     width: boundingBox.width * imageWidth,
                     height: boundingBox.height * imageHeight
                 )
-
+                
                 // Crop the image based on the detected document rect
                 if let croppedCgImage = cgImage.cropping(to: croppingRect) {
                     let croppedImage = UIImage(cgImage: croppedCgImage)
@@ -249,7 +273,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     completion(nil)
                 }
             }
-
+            
             // Run the request in the background
             let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             DispatchQueue.global(qos: .userInitiated).async {
@@ -299,7 +323,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 print("❌ Failed to apply whiten filter")
                 return nil
             }
-
+            
             // Step 2: Convert back to UIImage
             let context = CIContext()
             if let cgImage = context.createCGImage(whitenedImage, from: whitenedImage.extent) {
@@ -321,10 +345,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
             let timestamp = dateFormatter.string(from: Date())
             let pdfURL = documentsDirectory.appendingPathComponent("scanned_document_\(timestamp).pdf")
-
+            
             // Start the PDF context
             UIGraphicsBeginPDFContextToFile(pdfURL.path, .zero, nil)
-
+            
             for image in capturedImages {
                 // Get the image size
                 let imageSize = image.size
@@ -333,10 +357,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 // Draw the image onto the PDF page
                 image.draw(in: CGRect(origin: .zero, size: imageSize))
             }
-
+            
             // End the PDF context
             UIGraphicsEndPDFContext()
-
+            
             // Check if the PDF was successfully created and saved
             if FileManager.default.fileExists(atPath: pdfURL.path) {
                 print("✅ PDF saved successfully at \(pdfURL.path)")
@@ -345,22 +369,22 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             }
         }
         
-
+        
         
         // Handle detected document segmentation (cropping and rotation)
-
+        
         func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
             if let error = error {
                 print("❌ Error capturing photo: \(error.localizedDescription)")
                 return
             }
-
+            
             guard let imageData = photo.fileDataRepresentation(),
                   let image = UIImage(data: imageData) else {
                 print("❌ Failed to process photo data")
                 return
             }
-
+            
             // Deteksi dan potong dokumen
             cropImageToDetectedDocument(image) { croppedImage in
                 guard let croppedImage = croppedImage else {
@@ -370,7 +394,7 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     }
                     return
                 }
-
+                
                 // Apply image processing (whiten paper and enhance text)
                 if let processedImage = self.processImageForLegibility(croppedImage) {
                     // Add the processed image to the stack
@@ -392,26 +416,30 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             let imageView = UIImageView(image: image)
             let previewSize: CGFloat = 60 // Small preview size
             let stackOffset: CGFloat = CGFloat(capturedImages.count * 5) // Offset for stacking
-
+            
             imageView.frame = CGRect(x: 20 + stackOffset, y: UIScreen.main.bounds.height - 100 - stackOffset, width: previewSize, height: previewSize)
             imageView.contentMode = .scaleAspectFill
             imageView.clipsToBounds = true
             imageView.layer.cornerRadius = 10
             imageView.layer.borderColor = UIColor.white.cgColor
             imageView.layer.borderWidth = 2
-
+            
             // Add slight rotation for stacking
             let rotationAngle = CGFloat.random(in: -10...10) * .pi / 180
             imageView.transform = CGAffineTransform(rotationAngle: rotationAngle)
-
+            
             if let keyWindow = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
                 .flatMap({ $0.windows })
                 .first(where: { $0.isKeyWindow }) {
                 keyWindow.addSubview(imageView)
             }
+            
+            // Update done button visibility
+            doneButton.isHidden = false
+            doneButton.setTitle("Save \(capturedImages.count)", for: .normal)
         }
-
+        
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
             captureSession.stopRunning()
