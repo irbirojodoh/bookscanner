@@ -22,8 +22,6 @@ struct DocumentScannerView: UIViewControllerRepresentable {
     @Binding var pdfURL: URL? // To store the generated PDF URL
     var showDoneButton: Bool = true // Controls the visibility of the Done button
     let completion: () -> Void
-
-
     
     func makeUIViewController(context: Context) -> CustomCameraViewController {
         print("📷 Creating CustomCameraViewController")
@@ -38,7 +36,6 @@ struct DocumentScannerView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: CustomCameraViewController, context: Context) {
         // Implement updates if needed
     }
-    
     class Coordinator: NSObject {
         @Binding var bleManager: BLEManager
 
@@ -46,7 +43,6 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             _bleManager = bleManager
         }
     }
-    
     class CustomCameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         var captureSession: AVCaptureSession!
         var previewLayer: AVCaptureVideoPreviewLayer!
@@ -59,11 +55,8 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         var coordinator: Coordinator? // Reference to the coordinator
         private var cancellable: AnyCancellable? // Store the subscription
 
-        
-        
         override func viewDidLoad() {
             super.viewDidLoad()
-
             // Initialize the capture session
             captureSession = AVCaptureSession()
             
@@ -168,14 +161,35 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                 doneButton.heightAnchor.constraint(equalToConstant: 50)
             ])
             
-            DispatchQueue.main.async {
-                // Automatically detect when receivedValue changes
-                if self.coordinator?.bleManager.receivedValue != nil {
-                    print("Value Changed")
-                }
-            }
+            // Observe changes to `receivedValue` in BLEManager
+            observeReceivedValue()
         }
         
+        private func observeReceivedValue() {
+            // Check if coordinator and bleManager are available
+            guard let bleManager = coordinator?.bleManager else { return }
+            
+            // Subscribe to the receivedValue publisher
+            cancellable = bleManager.$receivedValue
+                .sink { [weak self] newValue in
+                    // This block will execute when receivedValue changes
+                    self?.handleReceivedValueChange(newValue)
+                }
+        }
+        
+        func handleReceivedValueChange(_ newValue: String) {
+            guard !newValue.isEmpty else {
+                print("⚠️ Received value is empty, skipping action.")
+                return
+            }
+            
+            print("📲 Received value changed: \(newValue)")
+            
+            // Trigger photo capture if the value matches a condition
+            if newValue == "capture" {
+                capturePhoto()
+            }
+        }
     
 
         @objc func capturePhoto() {
@@ -185,17 +199,6 @@ struct DocumentScannerView: UIViewControllerRepresentable {
             captureOutput.capturePhoto(with: photoSettings, delegate: self)
         }
         
-        @objc func bleManagerValueChanged() {
-            // Check if the receivedValue is not empty
-            if let receivedValue = coordinator?.bleManager.receivedValue, !receivedValue.isEmpty {
-                print("📷 BLE manager triggered capture with value: \(receivedValue)")
-            //capturePhoto() // Trigger photo capture when receivedValue is not empty
-            } else {
-                print("⚠️ Received value is empty, skipping capture.")
-            }
-        }
-        
-
         
         func cropImageToDetectedDocument(_ image: UIImage, completion: @escaping (UIImage?) -> Void) {
             guard let cgImage = image.cgImage else {

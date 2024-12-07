@@ -10,7 +10,7 @@ import Combine
 class BLEManager: NSObject, ObservableObject {
     var isConnected = false
     var statusMessage = "Initializing..."
-    var receivedValue = ""
+    @Published  @ObservationIgnored var receivedValue: String = ""
     var scannerState = ScannerState.IDLE
     var pickerDismissed = true
     var scannerConnected = false
@@ -234,4 +234,8 @@ extension BLEManager: CBPeripheralDelegate {
             statusMessage = "Value written successfully"
         }
     }
+}
+
+extension Notification.Name {
+    static let bleValueChanged = Notification.Name("BLEValueChangedNotification")
 }
