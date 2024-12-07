@@ -87,11 +87,10 @@ Servo swipeServo;
 int pressureServoPin = 4;
 Servo pressureServo;
 
-int proxiPin = 13;
+int proxiPin = 13; 
 int buzzPin = 32;
 
-#define MOVESERVOLOWER_INITMS 2000
-bool overdrive = false;
+#define MOVESERVOLOWER_INITMS 2000 //Originally 2000
 
 void homing(){
   // Reset servo to default position
@@ -102,6 +101,14 @@ void homing(){
   digitalWrite(buzzPin, HIGH);
   delay(5000);
   digitalWrite(buzzPin, LOW);
+  delay(1000);
+
+  while(!digitalRead(proxiPin)){
+    digitalWrite(buzzPin, HIGH);
+    delay(1000);
+    digitalWrite(buzzPin, LOW);
+    delay(1000);
+  }
 
   // wheelServo.write(140);
   // swipeServo.write(100);
@@ -109,84 +116,106 @@ void homing(){
   // swipeServo.write(180);
 }
 
-void flip(){
+bool flip(){
+  int attempt = 1;
+  bool finishRaise = false;
+  bool raiseSuccess = false;
+  int moveServoLower_curAngle;
   //Move wheel servo to lower position
-  analogWrite(motorEnPin, 180);
-  wheelServo.write(135);
-  overdrive = false;
+  while (attempt <= 3 && !raiseSuccess){
+    wheelServo.write(135);
+    delay(1000);
 
-  delay(1000);
-
-  //Move wheel slowly
-  //Until proxi detects
-  digitalWrite(motorPin1, HIGH);
-  digitalWrite(motorPin2, LOW); 
-  
-  int moveServoLower_timeoutMs = MOVESERVOLOWER_INITMS;
-  int moveServoLower_curAngle = 135;
-  while(digitalRead(proxiPin)){
-
-    if(moveServoLower_curAngle == 143){
-      if(overdrive){
-        digitalWrite(buzzPin, HIGH);
-        delay(1000);
-        digitalWrite(buzzPin, LOW);
-        delay(1000);
-        digitalWrite(buzzPin, HIGH);
-        delay(1000);
-        digitalWrite(buzzPin, LOW);
-        break;
-      } 
-      else {
-        digitalWrite(buzzPin, HIGH);
-        delay(1000);
-        digitalWrite(buzzPin, LOW);
-        moveServoLower_curAngle = 135;
-        wheelServo.write(moveServoLower_curAngle);
-        analogWrite(motorEnPin, 255);
-        overdrive = true;
-      }
-    }
+    //Move wheel
+    digitalWrite(motorPin1, HIGH);
+    digitalWrite(motorPin2, LOW); 
+    analogWrite(motorEnPin, 255);
+    delay(300);
+    analogWrite(motorEnPin, 90);
     
-    if(moveServoLower_timeoutMs == 0){
-      moveServoLower_timeoutMs = MOVESERVOLOWER_INITMS;
-      moveServoLower_curAngle += 1;
-      wheelServo.write(moveServoLower_curAngle);
+    int moveServoLower_timeoutMs = MOVESERVOLOWER_INITMS;
+    moveServoLower_curAngle = 135;
+    bool overdrive = false;
+    
+    finishRaise = false;
+    while(!finishRaise){
+      if(moveServoLower_timeoutMs == 0){
+        if(overdrive){
+          moveServoLower_curAngle += 1;
+          wheelServo.write(moveServoLower_curAngle);
+          analogWrite(motorEnPin, 90);
+        } else{
+          analogWrite(motorEnPin, 255);
+        }
+        moveServoLower_timeoutMs = MOVESERVOLOWER_INITMS;
+        overdrive = !overdrive;
+      }
+      moveServoLower_timeoutMs -= 1;
+
+      finishRaise = (moveServoLower_curAngle >= 143) || !digitalRead(proxiPin);
+      
+      // wheelServo.write(moveServoLower_curAngle - 2);
+      // delay(250);
+      // wheelServo.write(moveServoLower_curAngle);
+      // delay(250);
+      delay(1);
+      
     }
-    moveServoLower_timeoutMs -= 1;
-    // wheelServo.write(moveServoLower_curAngle + 2);
-    // delay(250);
-    // wheelServo.write(moveServoLower_curAngle);
-    // delay(250);
-    delay(1);
+    raiseSuccess = (moveServoLower_curAngle < 143);
+    attempt++;
+
+    if(!raiseSuccess){
+      //Move wheel servo to higher position
+      wheelServo.write(5);
+      delay(1000);
+    }
   }
 
-  //Swiper servo would move, then turn wheel off
-  swipeServo.write(33);
-  delay(100);
-  swipeServo.write(67);
-  delay(100);
-  swipeServo.write(100);
-  delay(500);
-  digitalWrite(motorPin1, LOW);
-  digitalWrite(motorPin2, LOW); 
-  
-  //Move wheel servo to higher position
-  wheelServo.write(5);
-  delay(1000);
-  
-  //Swiper servo would move more, and point pressure servo would move
-  swipeServo.write(230);
-  delay(750);
-  pressureServo.write(170);
-  delay(2000);
+  if (attempt > 3){
+      digitalWrite(motorPin1, LOW);
+      digitalWrite(motorPin2, LOW);
+      digitalWrite(buzzPin, HIGH);
+      delay(1000);
+      digitalWrite(buzzPin, LOW);
+      delay(1000);
+      digitalWrite(buzzPin, HIGH);
+      delay(1000);
+      digitalWrite(buzzPin, LOW); 
+      return false;
+    }
 
-  //Swiper servo would reset
-  swipeServo.write(0);
-  pressureServo.write(0);
+    //Swiper servo would move, then turn wheel off
+    swipeServo.write(100);
+    delay(500);
+    digitalWrite(motorPin1, LOW);
+    digitalWrite(motorPin2, LOW); 
+    
+    //Move wheel servo to higher position
+    wheelServo.write(5);
+    delay(1000);
+    
+    //Swiper servo would move more, and point pressure servo would move
+    swipeServo.write(230);
+    delay(750);
+    pressureServo.write(140);
+    delay(1000);
 
-  delay(1000);
+    //Roll page backward to remove excess shift
+    wheelServo.write(moveServoLower_curAngle);
+    analogWrite(motorEnPin, 255);
+    digitalWrite(motorPin1, LOW);
+    digitalWrite(motorPin2, HIGH); 
+    delay(2000);
+    
+    //Reset to orig pos
+    wheelServo.write(5);
+    digitalWrite(motorPin1, LOW);
+    digitalWrite(motorPin2, LOW); 
+    swipeServo.write(0);
+    pressureServo.write(0);
+    delay(1000);
 
+    return true;
 }
 
 void setup(){
@@ -202,8 +231,9 @@ void setup(){
   wheelServo.attach(wheelServoPin);
   swipeServo.attach(swipeServoPin);
   pressureServo.attach(pressureServoPin);
+  homing();
 }
 
 void loop(){
-  flip()
+  flip();
 }
