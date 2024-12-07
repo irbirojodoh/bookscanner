@@ -411,8 +411,6 @@ struct DocumentScannerView: UIViewControllerRepresentable {
         
         
         func updatePreviewStack(with image: UIImage) {
-            capturedImages.append(image) // Add the captured image to the array
-            // Your logic to create the stack of images
             let imageView = UIImageView(image: image)
             let previewSize: CGFloat = 60 // Small preview size
             let stackOffset: CGFloat = CGFloat(capturedImages.count * 5) // Offset for stacking
