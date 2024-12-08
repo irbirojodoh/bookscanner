@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Vision
 import SwiftUI
 
 class HomeViewModel: ObservableObject {
@@ -41,10 +42,53 @@ class HomeViewModel: ObservableObject {
         UIGraphicsBeginPDFContextToFile(pdfURL?.path ?? "", .zero, nil)
 
         for image in scannedImages {
-            let imageSize = image.size
-            UIGraphicsBeginPDFPageWithInfo(CGRect(origin: .zero, size: imageSize), nil)
-            image.draw(in: CGRect(origin: .zero, size: imageSize))
-        }
+                        let imageSize = image.size
+                        UIGraphicsBeginPDFPageWithInfo(CGRect(origin: .zero, size: imageSize), nil)
+                        
+                        // Draw the image
+                        image.draw(in: CGRect(origin: .zero, size: imageSize))
+                        
+                        // Perform OCR on the image
+                        let textRecognitionRequest = VNRecognizeTextRequest { (request, error) in
+                            guard let observations = request.results as? [VNRecognizedTextObservation], error == nil else {
+                                print("❌ OCR failed for image: \(error?.localizedDescription ?? "Unknown error")")
+                                return
+                            }
+                            
+                            for observation in observations {
+                                if let recognizedText = observation.topCandidates(1).first?.string {
+                                    // Convert normalized bounding box to image coordinates
+                                    let boundingBox = observation.boundingBox
+                                    let textRect = CGRect(
+                                        x: boundingBox.minX * imageSize.width,
+                                        y: (1 - boundingBox.maxY) * imageSize.height, // Flip Y-axis
+                                        width: boundingBox.width * imageSize.width,
+                                        height: boundingBox.height * imageSize.height
+                                    )
+                                    
+                                    // Draw the recognized text
+                                    let paragraphStyle = NSMutableParagraphStyle()
+                                    paragraphStyle.alignment = .left
+                                    
+                                    let attributes: [NSAttributedString.Key: Any] = [
+                                        .font: UIFont.systemFont(ofSize: 12),
+                                        .paragraphStyle: paragraphStyle,
+                                        .foregroundColor: UIColor.clear // Transparent text layer
+                                    ]
+                                    
+                                    recognizedText.draw(in: textRect, withAttributes: attributes)
+                                }
+                            }
+                        }
+                        
+                        // Run the OCR request
+                        let handler = VNImageRequestHandler(cgImage: image.cgImage!, options: [:])
+                        do {
+                            try handler.perform([textRecognitionRequest])
+                        } catch {
+                            print("❌ Error performing OCR: \(error.localizedDescription)")
+                        }
+            }
 
         UIGraphicsEndPDFContext()
 
