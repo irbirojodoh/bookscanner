@@ -35,6 +35,21 @@ struct HomeView: View {
                         .cornerRadius(10)
                     }
                     .disabled(homeVM.scannedImages.isEmpty)
+                    
+                    // Cancel Button
+                    Button(action: {
+                        // Handle cancel logic here
+                        homeVM.scannedImages.removeAll() // Clear the scanned images
+                    }) {
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                            Text("Cancel")
+                        }
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
                 } else if homeVM.savedPDFs.isEmpty {
                     // Empty state UI
                     Image(systemName: "doc.plaintext")
@@ -47,9 +62,14 @@ struct HomeView: View {
                         .padding(.top, 16)
                 }
                 
-                if bleManager.isConnected == true {
+                // Show the Start Scanning button only when there are no scanned images
+                if homeVM.scannedImages.isEmpty && bleManager.isConnected {
                     Button(action: {
-                        homeVM.isShowingScanner = true
+                        bleManager.writeValue("2")
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            homeVM.isShowingScanner = true
+                        }
                     }) {
                         VStack {
                             Image(systemName: "scanner.fill")
@@ -61,23 +81,25 @@ struct HomeView: View {
                         }
                     }
                 } else {
-                    Text("Bluetooth has not connected to the device.")
-                        .font(.headline)
-                        .bold()
-                    
-                    Button {
-                        bleManager.connect()
-                    } label: {
-                        Text("Connect Bluetooth")
-                            .font(.footnote)
-                            .foregroundStyle(.white)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.blue)
-                            )
+                    // Show a message if no connection is established
+                    if !bleManager.isConnected {
+                        Text("Bluetooth has not connected to the device.")
+                            .font(.headline)
+                            .bold()
+                        
+                        Button {
+                            bleManager.connect()
+                        } label: {
+                            Text("Connect Bluetooth")
+                                .font(.footnote)
+                                .foregroundStyle(.white)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.blue)
+                                )
+                        }
                     }
-                    
                 }
                 
                 Spacer()
@@ -109,12 +131,11 @@ struct HomeView: View {
                 Image(systemName: "ellipsis")
                     .font(.title2)
                     .foregroundColor(.gray)
-            }
-            )
+            })
             .sheet(isPresented: $homeVM.isShowingScanner) {
                 DocumentScannerView(bleManager: $bleManager, scannedImages: $homeVM.scannedImages,
                                     couldScan: $homeVM.couldScan,
-                                    pdfURL: $homeVM.pdfURL) {
+                                    pdfURL: $homeVM.pdfURL, isShowingScanner: $homeVM.isShowingScanner) {
                     print("📷 Scanner completion handler called")
                     print("📷 Current scanned images count: \(homeVM.scannedImages.count)")
                     if !homeVM.scannedImages.isEmpty {

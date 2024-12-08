@@ -8,7 +8,7 @@ import Combine
 
 @Observable
 class BLEManager: NSObject, ObservableObject {
-    var isConnected = false
+    @Published  @ObservationIgnored var isConnected = false
     var statusMessage = "Initializing..."
     @Published  @ObservationIgnored var receivedValue: String = ""
     var scannerState = ScannerState.IDLE
@@ -145,6 +145,7 @@ class BLEManager: NSObject, ObservableObject {
             statusMessage = "Invalid input or characteristic not found"
             return
         }
+        print("Value written: \(text) ")
         peripheral?.writeValue(data, for: characteristic, type: .withResponse)
     }
 }
@@ -184,6 +185,7 @@ extension BLEManager: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
         print("Disconnected from peripheral: \(peripheral)")
         isConnected = false
+        //self.connect()
     }
 }
 

@@ -27,34 +27,36 @@ class HomeViewModel: ObservableObject {
     @Published var showingSaveDialog = false
     
     func savePDF() {
-        print("💾 Starting PDF save process")
-        print("💾 Number of images to save: \(scannedImages.count)")
+        guard !scannedImages.isEmpty else { return }
         
-        guard !scannedImages.isEmpty else {
-            print("❌ No images to save")
-            saveSuccess = false
-            showingSaveAlert = true
-            return
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
+        let timestamp = dateFormatter.string(from: Date())
+        
+        let fileName = customFileName.isEmpty ? "scanned_document_\(timestamp)" : customFileName
+        pdfURL = documentsDirectory.appendingPathComponent("\(fileName).pdf")
+
+        // Create PDF
+        UIGraphicsBeginPDFContextToFile(pdfURL?.path ?? "", .zero, nil)
+
+        for image in scannedImages {
+            let imageSize = image.size
+            UIGraphicsBeginPDFPageWithInfo(CGRect(origin: .zero, size: imageSize), nil)
+            image.draw(in: CGRect(origin: .zero, size: imageSize))
         }
+
+        UIGraphicsEndPDFContext()
+
+        // Reset scanned images after saving
+        scannedImages.removeAll()
         
-        let fileName = customFileName.isEmpty ?
-        "Scan_\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))" :
-        customFileName
-        
-        print("💾 Saving with filename: \(fileName)")
-        
-        if let url = PDFManager.createPDF(from: scannedImages, fileName: fileName) {
-            print("💾 Successfully created PDF at: \(url.path)")
-            pdfURL = url
-            saveSuccess = true
-            scannedImages = [] // Clear the scanned images after successful save
-        } else {
-            print("❌ Failed to create PDF")
-            saveSuccess = false
-        }
-        
+        // Trigger save success alert
         showingSaveAlert = true
-        customFileName = ""
+        saveSuccess = true
+        
+        // Load saved PDFs
+        loadSavedPDFs()
     }
     
     func loadSavedPDFs() {
