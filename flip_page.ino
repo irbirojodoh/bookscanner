@@ -1,79 +1,3 @@
-// // Motor A
-// int motor1Pin1 = 33; 
-// int motor1Pin2 = 27; 
-// int enable1Pin = 26; 
-
-// // Setting PWM properties
-// const int freq = 30000;
-// const int pwmChannel = 0;
-// const int resolution = 8;
-// int dutyCycle = 200;
-
-// void setup() {
-//   // sets the pins as outputs:
-//   pinMode(motor1Pin1, OUTPUT);
-//   pinMode(motor1Pin2, OUTPUT);
-//   pinMode(enable1Pin, OUTPUT);
-  
-//   // configure LEDC PWM
-//   //ledcAttachChannel(enable1Pin, freq, resolution, pwmChannel);
-
-//   Serial.begin(115200);
-
-//   // testing
-//   Serial.print("Testing DC Motor...");
-// }
-
-// void loop() {
-//   // Move the DC motor forward at maximum speed
-//   Serial.println("Moving Forward");
-//   digitalWrite(motor1Pin1, LOW);
-//   digitalWrite(motor1Pin2, HIGH); 
-//   delay(2000);
-
-//   // Stop the DC motor
-//   Serial.println("Motor stopped");
-//   digitalWrite(motor1Pin1, LOW);
-//   digitalWrite(motor1Pin2, LOW);
-//   delay(1000);
-
-//   // Move DC motor backwards at maximum speed
-//   Serial.println("Moving Backwards");
-//   digitalWrite(motor1Pin1, HIGH);
-//   digitalWrite(motor1Pin2, LOW); 
-//   delay(2000);
-
-//   // Stop the DC motor
-//   Serial.println("Motor stopped");
-//   digitalWrite(motor1Pin1, LOW);
-//   digitalWrite(motor1Pin2, LOW);
-//   delay(1000);
-
-//   // // Move DC motor forward with increasing speed
-//   // digitalWrite(motor1Pin1, HIGH);
-//   // digitalWrite(motor1Pin2, LOW);
-//   // while (dutyCycle <= 255){
-//   //   ledcWrite(enable1Pin, dutyCycle);   
-//   //   Serial.print("Forward with duty cycle: ");
-//   //   Serial.println(dutyCycle);
-//   //   dutyCycle = dutyCycle + 5;
-//   //   delay(500);
-//   // }
-//   // dutyCycle = 200;
-// }
-
-
-//Begin
-//Homing
-//BC BL (wait until BL pair)
-//BL paired (wait until button 1 to proceed, or butt 3 (or phone unpaired) to unpair)
-//Start scanning sequence (wait until sequence trigger, or any button to pause (or device unpaired))
-  //Servo moves to low, motor spins, servo moves lower slowly
-  //Wait until proxi detects, then servo flip page, wheel servo moves high
-  //Send signal to phone to capture photo
-  //Repeat
-//Pause: (Button 1 to resume, Button 3 to terminate)
-
 #include<ESP32Servo.h>
 
 int motorPin1 = 33; 
@@ -116,10 +40,13 @@ void homing(){
   // swipeServo.write(180);
 }
 
+bool isPause;
+
 bool flip(){
   int attempt = 1;
   bool finishRaise = false;
   bool raiseSuccess = false;
+  isPause = false;
   int moveServoLower_curAngle;
   //Move wheel servo to lower position
   while (attempt <= 3 && !raiseSuccess){
@@ -159,6 +86,9 @@ bool flip(){
       // wheelServo.write(moveServoLower_curAngle);
       // delay(250);
       delay(1);
+      if(isPause){
+        return false;
+      }
       
     }
     raiseSuccess = (moveServoLower_curAngle < 143);
@@ -195,7 +125,7 @@ bool flip(){
     delay(1000);
     
     //Swiper servo would move more, and point pressure servo would move
-    swipeServo.write(230);
+    swipeServo.write(180);
     delay(750);
     pressureServo.write(140);
     delay(1000);
